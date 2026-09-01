@@ -13,71 +13,79 @@ import { Contact } from "@/sections/Contact";
 import { ProjectCaseStudy } from "@/pages/ProjectCaseStudy";
 
 function HomePage() {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
+  const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [hasInteracted, setHasInteracted] = useState(false);
 
+  // Start music after the first real user interaction.
+  useEffect(() => {
+    const startMusic = () => {
+      const audio = audioRef.current;
+
+      if (!audio || !audio.paused) return;
+
+      audio.volume = 0.12;
+      audio.loop = true;
+
+      audio
+        .play()
+        .then(() => {
+          setIsPlaying(true);
+          removeListeners();
+        })
+        .catch(() => {
+          // Browser may still block playback.
+          // The SOUND button below can be used manually.
+        });
+    };
+
+    const removeListeners = () => {
+      window.removeEventListener("pointerdown", startMusic);
+      window.removeEventListener("keydown", startMusic);
+      window.removeEventListener("touchstart", startMusic);
+    };
+
+    window.addEventListener("pointerdown", startMusic, { passive: true });
+    window.addEventListener("keydown", startMusic);
+    window.addEventListener("touchstart", startMusic, { passive: true });
+
+    return removeListeners;
+  }, []);
+
+  // Keep React state synchronized with the actual audio element.
   useEffect(() => {
     const audio = audioRef.current;
 
     if (!audio) return;
 
-    audio.loop = true;
-    audio.volume = 0.12;
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+    const handleEnded = () => setIsPlaying(false);
 
-    const startMusic = async () => {
-      try {
-        await audio.play();
-
-        setIsPlaying(true);
-        setHasInteracted(true);
-
-        removeInteractionListeners();
-      } catch {
-        // Browser blocked autoplay.
-        // Music will start after user interaction.
-      }
-    };
-
-    const handleInteraction = () => {
-      setHasInteracted(true);
-      startMusic();
-    };
-
-    const removeInteractionListeners = () => {
-      window.removeEventListener("click", handleInteraction);
-      window.removeEventListener("pointerdown", handleInteraction);
-      window.removeEventListener("keydown", handleInteraction);
-      window.removeEventListener("touchstart", handleInteraction);
-    };
-
-    // Try autoplay first.
-    startMusic();
-
-    // Fallback for browser autoplay restrictions.
-    window.addEventListener("click", handleInteraction);
-    window.addEventListener("pointerdown", handleInteraction);
-    window.addEventListener("keydown", handleInteraction);
-    window.addEventListener("touchstart", handleInteraction);
+    audio.addEventListener("play", handlePlay);
+    audio.addEventListener("pause", handlePause);
+    audio.addEventListener("ended", handleEnded);
 
     return () => {
-      removeInteractionListeners();
+      audio.removeEventListener("play", handlePlay);
+      audio.removeEventListener("pause", handlePause);
+      audio.removeEventListener("ended", handleEnded);
     };
   }, []);
 
-  const toggleMusic = async () => {
+  const toggleSound = async () => {
     const audio = audioRef.current;
 
     if (!audio) return;
 
     if (audio.paused) {
+      audio.volume = 0.12;
+      audio.loop = true;
+
       try {
         await audio.play();
         setIsPlaying(true);
-        setHasInteracted(true);
       } catch (error) {
-        console.log("Unable to start music:", error);
+        console.error("Unable to play audio:", error);
       }
     } else {
       audio.pause();
@@ -87,7 +95,7 @@ function HomePage() {
 
   return (
     <>
-      {/* Background Music */}
+      {/* Background music */}
       <audio
         ref={audioRef}
         src="/spiderman_homecoming.mp3"
@@ -99,82 +107,52 @@ function HomePage() {
 
       <main>
         <Hero />
-
         <Profile />
-
         <Capabilities />
-
         <SelectedWork />
-
         <Evidence />
-
         <BuildLog />
-
         <Journey />
-
         <Contact />
       </main>
 
-      {/* Sound Control */}
+      {/* Cinematic sound control */}
       <button
-        onClick={toggleMusic}
+        type="button"
+        onClick={toggleSound}
         aria-label={isPlaying ? "Turn sound off" : "Turn sound on"}
         className="
           fixed
           bottom-6
           right-6
-          z-50
+          z-[9999]
           flex
           items-center
           gap-3
           border
           border-white/15
-          bg-black/70
+          bg-black/75
           px-4
           py-3
           text-[10px]
+          font-medium
           uppercase
-          tracking-[0.25em]
-          text-white/80
+          tracking-[0.22em]
+          text-white/70
           backdrop-blur-md
           transition-all
           duration-300
-          hover:border-red-500/50
+          hover:border-red-500/60
           hover:text-white
         "
       >
-        {/* Sound indicator */}
-        <span className="relative flex h-2 w-2">
-          {isPlaying && (
-            <span
-              className="
-                absolute
-                inline-flex
-                h-full
-                w-full
-                animate-ping
-                rounded-full
-                bg-red-500
-                opacity-60
-              "
-            />
-          )}
+        <span
+          className={`h-2 w-2 rounded-full ${
+            isPlaying ? "bg-red-500" : "bg-white/30"
+          }`}
+        />
 
-          <span
-            className={`relative inline-flex h-2 w-2 rounded-full ${
-              isPlaying ? "bg-red-500" : "bg-white/30"
-            }`}
-          />
-        </span>
-
-        {/* Label */}
-        <span>
-          {isPlaying
-            ? "Sound On"
-            : hasInteracted
-              ? "Sound Off"
-              : "Enable Sound"}
-        </span>
+        <span>{isPlaying ? "Sound On" : "Sound Off"}</span>
       </button>
     </>
   );
