@@ -14,28 +14,47 @@ import { ProjectCaseStudy } from "@/pages/ProjectCaseStudy";
 function HomePage() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
+useEffect(() => {
+  const audio = audioRef.current;
+  if (!audio) return;
 
-    audio.volume = 0.2;
-    audio.loop = true;
-    audio.muted = false;
+  audio.volume = 0.12;
+  audio.loop = true;
 
-    const playAudio = async () => {
-      try {
-        await audio.play();
-      } catch {
-        // Autoplay may be blocked until the user interacts with the page.
-      }
-    };
+  const startAudio = async () => {
+    try {
+      await audio.play();
+      cleanup();
+    } catch (error) {
+      console.log("Audio could not start:", error);
+    }
+  };
 
-    playAudio();
-  }, []);
+  const cleanup = () => {
+    window.removeEventListener("pointerdown", startAudio);
+    window.removeEventListener("keydown", startAudio);
+    window.removeEventListener("scroll", startAudio);
+    window.removeEventListener("touchstart", startAudio);
+  };
 
+  // Try autoplay first
+  startAudio();
+
+  // If browser blocks it, first interaction starts it
+  window.addEventListener("pointerdown", startAudio, { once: true });
+  window.addEventListener("keydown", startAudio, { once: true });
+  window.addEventListener("scroll", startAudio, { once: true });
+  window.addEventListener("touchstart", startAudio, { once: true });
+
+  return cleanup;
+}, []);
   return (
     <>
-      <audio ref={audioRef} src="/spiderman_homecoming.mp3" preload="auto" />
+      <audio
+  ref={audioRef}
+  src="/spiderman_homecoming.mp3"
+  preload="auto"
+/>
       <Navigation />
       <main>
         <Hero />
