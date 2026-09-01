@@ -12,8 +12,9 @@ import { Journey } from "@/sections/Journey";
 import { Contact } from "@/sections/Contact";
 import { ProjectCaseStudy } from "@/pages/ProjectCaseStudy";
 
-function HomePage() {
-  const audioRef = useRef<HTMLAudioElement>(null);
+function GlobalAudio() {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
   const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
@@ -24,37 +25,20 @@ function HomePage() {
     audio.volume = 0.12;
     audio.loop = true;
 
-    const startMusic = () => {
-      if (!audio.paused) return;
-
-      audio
-        .play()
-        .then(() => {
-          setIsPlaying(true);
-          removeListeners();
-        })
-        .catch(() => {
-          // Browser blocked autoplay.
-          // The sound button remains available.
-        });
+    const handlePlay = () => {
+      setIsPlaying(true);
     };
 
-    const removeListeners = () => {
-      window.removeEventListener("pointerdown", startMusic);
-      window.removeEventListener("keydown", startMusic);
-      window.removeEventListener("touchstart", startMusic);
+    const handlePause = () => {
+      setIsPlaying(false);
     };
 
-    // Attempt autoplay.
-    startMusic();
-
-    // Start after the first user interaction if autoplay is blocked.
-    window.addEventListener("pointerdown", startMusic);
-    window.addEventListener("keydown", startMusic);
-    window.addEventListener("touchstart", startMusic);
+    audio.addEventListener("play", handlePlay);
+    audio.addEventListener("pause", handlePause);
 
     return () => {
-      removeListeners();
+      audio.removeEventListener("play", handlePlay);
+      audio.removeEventListener("pause", handlePause);
     };
   }, []);
 
@@ -64,13 +48,15 @@ function HomePage() {
     if (!audio) return;
 
     if (audio.paused) {
-      audio.volume = 0.12;
-
       try {
+        audio.volume = 0.12;
+        audio.loop = true;
+
         await audio.play();
+
         setIsPlaying(true);
-      } catch {
-        // Browser refused playback.
+      } catch (error) {
+        console.error("Audio playback failed:", error);
       }
     } else {
       audio.pause();
@@ -87,6 +73,51 @@ function HomePage() {
         loop
       />
 
+      <button
+        type="button"
+        onClick={toggleMusic}
+        aria-label={isPlaying ? "Turn sound off" : "Turn sound on"}
+        className="
+          fixed
+          bottom-6
+          right-6
+          z-[99999]
+          flex
+          items-center
+          gap-3
+          border
+          border-red-500/30
+          bg-black/80
+          px-4
+          py-3
+          text-[10px]
+          uppercase
+          tracking-[0.25em]
+          text-white/80
+          backdrop-blur-md
+          transition-all
+          duration-300
+          hover:border-red-500
+          hover:text-white
+        "
+      >
+        <span
+          className={`h-2 w-2 rounded-full ${
+            isPlaying ? "bg-red-500 animate-pulse" : "bg-white/30"
+          }`}
+        />
+
+        <span>
+          {isPlaying ? "Sound On" : "Sound Off"}
+        </span>
+      </button>
+    </>
+  );
+}
+
+function HomePage() {
+  return (
+    <>
       <Navigation />
 
       <main>
@@ -99,30 +130,24 @@ function HomePage() {
         <Journey />
         <Contact />
       </main>
-
-      <button
-        type="button"
-        onClick={toggleMusic}
-        aria-label={isPlaying ? "Turn sound off" : "Turn sound on"}
-        className="fixed bottom-6 right-6 z-[9999] flex items-center gap-3 border border-white/15 bg-black/80 px-4 py-3 text-[10px] uppercase tracking-[0.25em] text-white/80 backdrop-blur-md transition-all duration-300 hover:border-red-500/60 hover:text-white"
-      >
-        <span
-          className={`h-2 w-2 rounded-full ${
-            isPlaying ? "bg-red-500" : "bg-white/30"
-          }`}
-        />
-
-        <span>{isPlaying ? "Sound On" : "Sound Off"}</span>
-      </button>
     </>
   );
 }
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/work/:id" element={<ProjectCaseStudy />} />
-    </Routes>
+    <>
+      {/* Global music — stays mounted across routes */}
+      <GlobalAudio />
+
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+
+        <Route
+          path="/work/:id"
+          element={<ProjectCaseStudy />}
+        />
+      </Routes>
+    </>
   );
 }
