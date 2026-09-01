@@ -16,37 +16,41 @@ function HomePage() {
 
 useEffect(() => {
   const audio = audioRef.current;
+
   if (!audio) return;
 
-  audio.volume = 0.12;
   audio.loop = true;
+  audio.volume = 0.12;
 
-  const startAudio = async () => {
+  const playMusic = async () => {
     try {
       await audio.play();
-      cleanup();
+
+      // Music successfully started
+      document.removeEventListener("click", playMusic);
+      document.removeEventListener("scroll", playMusic);
+      document.removeEventListener("keydown", playMusic);
+      document.removeEventListener("touchstart", playMusic);
     } catch (error) {
-      console.log("Audio could not start:", error);
+      console.log("Waiting for user interaction to start music...");
     }
   };
 
-  const cleanup = () => {
-    window.removeEventListener("pointerdown", startAudio);
-    window.removeEventListener("keydown", startAudio);
-    window.removeEventListener("scroll", startAudio);
-    window.removeEventListener("touchstart", startAudio);
+  // Try immediately
+  playMusic();
+
+  // Browser fallback
+  document.addEventListener("click", playMusic);
+  document.addEventListener("scroll", playMusic);
+  document.addEventListener("keydown", playMusic);
+  document.addEventListener("touchstart", playMusic);
+
+  return () => {
+    document.removeEventListener("click", playMusic);
+    document.removeEventListener("scroll", playMusic);
+    document.removeEventListener("keydown", playMusic);
+    document.removeEventListener("touchstart", playMusic);
   };
-
-  // Try autoplay first
-  startAudio();
-
-  // If browser blocks it, first interaction starts it
-  window.addEventListener("pointerdown", startAudio, { once: true });
-  window.addEventListener("keydown", startAudio, { once: true });
-  window.addEventListener("scroll", startAudio, { once: true });
-  window.addEventListener("touchstart", startAudio, { once: true });
-
-  return cleanup;
 }, []);
   return (
     <>
