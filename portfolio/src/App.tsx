@@ -16,15 +16,16 @@ function HomePage() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
-  // Start music after the first real user interaction.
   useEffect(() => {
+    const audio = audioRef.current;
+
+    if (!audio) return;
+
+    audio.volume = 0.12;
+    audio.loop = true;
+
     const startMusic = () => {
-      const audio = audioRef.current;
-
-      if (!audio || !audio.paused) return;
-
-      audio.volume = 0.12;
-      audio.loop = true;
+      if (!audio.paused) return;
 
       audio
         .play()
@@ -33,8 +34,8 @@ function HomePage() {
           removeListeners();
         })
         .catch(() => {
-          // Browser may still block playback.
-          // The SOUND button below can be used manually.
+          // Browser blocked autoplay.
+          // The sound button remains available.
         });
     };
 
@@ -44,48 +45,32 @@ function HomePage() {
       window.removeEventListener("touchstart", startMusic);
     };
 
-    window.addEventListener("pointerdown", startMusic, { passive: true });
+    // Attempt autoplay.
+    startMusic();
+
+    // Start after the first user interaction if autoplay is blocked.
+    window.addEventListener("pointerdown", startMusic);
     window.addEventListener("keydown", startMusic);
-    window.addEventListener("touchstart", startMusic, { passive: true });
-
-    return removeListeners;
-  }, []);
-
-  // Keep React state synchronized with the actual audio element.
-  useEffect(() => {
-    const audio = audioRef.current;
-
-    if (!audio) return;
-
-    const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
-    const handleEnded = () => setIsPlaying(false);
-
-    audio.addEventListener("play", handlePlay);
-    audio.addEventListener("pause", handlePause);
-    audio.addEventListener("ended", handleEnded);
+    window.addEventListener("touchstart", startMusic);
 
     return () => {
-      audio.removeEventListener("play", handlePlay);
-      audio.removeEventListener("pause", handlePause);
-      audio.removeEventListener("ended", handleEnded);
+      removeListeners();
     };
   }, []);
 
-  const toggleSound = async () => {
+  const toggleMusic = async () => {
     const audio = audioRef.current;
 
     if (!audio) return;
 
     if (audio.paused) {
       audio.volume = 0.12;
-      audio.loop = true;
 
       try {
         await audio.play();
         setIsPlaying(true);
-      } catch (error) {
-        console.error("Unable to play audio:", error);
+      } catch {
+        // Browser refused playback.
       }
     } else {
       audio.pause();
@@ -95,7 +80,6 @@ function HomePage() {
 
   return (
     <>
-      {/* Background music */}
       <audio
         ref={audioRef}
         src="/spiderman_homecoming.mp3"
@@ -116,35 +100,11 @@ function HomePage() {
         <Contact />
       </main>
 
-      {/* Cinematic sound control */}
       <button
         type="button"
-        onClick={toggleSound}
+        onClick={toggleMusic}
         aria-label={isPlaying ? "Turn sound off" : "Turn sound on"}
-        className="
-          fixed
-          bottom-6
-          right-6
-          z-[9999]
-          flex
-          items-center
-          gap-3
-          border
-          border-white/15
-          bg-black/75
-          px-4
-          py-3
-          text-[10px]
-          font-medium
-          uppercase
-          tracking-[0.22em]
-          text-white/70
-          backdrop-blur-md
-          transition-all
-          duration-300
-          hover:border-red-500/60
-          hover:text-white
-        "
+        className="fixed bottom-6 right-6 z-[9999] flex items-center gap-3 border border-white/15 bg-black/80 px-4 py-3 text-[10px] uppercase tracking-[0.25em] text-white/80 backdrop-blur-md transition-all duration-300 hover:border-red-500/60 hover:text-white"
       >
         <span
           className={`h-2 w-2 rounded-full ${
@@ -162,11 +122,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
-
-      <Route
-        path="/work/:id"
-        element={<ProjectCaseStudy />}
-      />
+      <Route path="/work/:id" element={<ProjectCaseStudy />} />
     </Routes>
   );
 }
